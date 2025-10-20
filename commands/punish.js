@@ -17,7 +17,7 @@ module.exports = {
 
     async execute(interaction) {
         const targetUser = interaction.options.getUser("사용자");
-        const messageCount = 30; // 요청하신 도배 횟수
+        const messageCount = 10; // 요청하신 도배 횟수
 
         if (
             !interaction.memberPermissions.has(
