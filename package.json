@@ -1,0 +1,16 @@
+{
+    "name": "aronybot",
+    "version": "1.0.0",
+    "description": "Hi",
+    "license": "ISC",
+    "author": "Neony",
+    "type": "commonjs",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {
+        "discord.js": "^14.23.2"
+    }
+}
