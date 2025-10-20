@@ -1,17 +1,13 @@
-// 1. 주요 클래스 가져오기 (기존 코드)
-const { Client, Events, GatewayIntentBits } = require("discord.js");
-const http = require("http"); // 헬스 체크를 위한 http 모듈 추가
+const { Client, Events, GatewayIntentBits, Collection } = require("discord.js");
+const fs = require("fs");
+const path = require("path");
+const http = require("http");
 
-// 2. 환경 변수에서 토큰 가져오기 (config.json 대신)
-// Koyeb 대시보드에서 'DISCORD_BOT_TOKEN'이라는 이름으로 실제 토큰을 설정해야 합니다.
+// 1. 토큰 및 헬스 체크 설정 (Koyeb 배포를 위해 유지)
 const token = process.env.DISCORD_BOT_TOKEN;
-
-// 3. 헬스 체크 서버 설정 (Koyeb에서 24시간 실행을 보장하기 위함)
-// Koyeb은 PORT 환경 변수를 제공하며, 0.0.0.0 주소로 리스닝해야 외부에서 접근 가능합니다.
 const PORT = process.env.PORT || 8000;
 
 const server = http.createServer((req, res) => {
-    // 헬스 체크 요청에 대해 200 OK 응답을 반환합니다.
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("Discord Bot is running and healthy!");
 });
@@ -21,27 +17,67 @@ server.listen(PORT, "0.0.0.0", () => {
 });
 // ----------------------------------------------------------------------
 
-// 4. 클라이언트 생성 및 인텐트 (기존 코드)
+// 2. 클라이언트 및 명령어 컬렉션 생성
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
+        // 기존 MessageContent 대신 GuildMembers 인텐트가 관리 기능에 필수
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
     ],
 });
 
-// 5. 봇 준비 완료 시 메시지 (기존 코드)
+client.commands = new Collection();
+
+// 3. 명령어 파일 로드
+const commandsPath = path.join(__dirname, "commands");
+const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter((file) => file.endsWith(".js"));
+
+for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    if ("data" in command && "execute" in command) {
+        client.commands.set(command.data.name, command);
+    } else {
+        console.log(
+            `[경고] ${filePath}의 명령어에 필수 속성(data 또는 execute)이 없습니다.`
+        );
+    }
+}
+
+// 4. 이벤트 핸들러
 client.once(Events.ClientReady, (readyClient) => {
     console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
 
-// 6. 'messageCreate' 이벤트 리스너 (기존 코드)
-client.on("messageCreate", (message) => {
-    if (message.content === "ping") {
-        message.reply("pong");
+// !!! 핑퐁 (messageCreate) 기능 제거 !!!
+
+// 5. 슬래시 명령어 상호작용 처리
+client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = interaction.client.commands.get(interaction.commandName);
+
+    if (!command) return;
+
+    try {
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        const errorMessage = "명령어 실행 중 오류가 발생했습니다! 😥";
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({
+                content: errorMessage,
+                ephemeral: true,
+            });
+        } else {
+            await interaction.reply({ content: errorMessage, ephemeral: true });
+        }
     }
 });
 
-// 7. 봇 로그인 실행
-// 토큰이 환경 변수에 설정되지 않았다면 여기서 오류가 발생합니다.
+// 6. 봇 로그인
 client.login(token);
