@@ -1,5 +1,3 @@
-// commands/solve_problem.js
-
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const axios = require("axios");
 
@@ -43,7 +41,7 @@ const difficultyMap = {
     r1: 30,
 };
 
-// 난이도 숫자를 정확한 티어+레벨 이름으로 변환하는 함수
+// 난이도 숫자를 티어명으로 변환
 function getDifficultyName(level) {
     if (level === 0) return "Unrated";
 
@@ -58,21 +56,20 @@ function getDifficultyName(level) {
 
     const tierValue = Math.ceil(level / 5) * 5;
     const tierName = tierMap[tierValue];
-
     const tierLevel = 6 - (level % 5 === 0 ? 5 : level % 5);
 
     return `${tierName} ${tierLevel}`;
 }
 
-// 난이도에 따라 임베드 색상 설정
+// 난이도 색상 반환
 function getDifficultyColor(level) {
-    if (level >= 26) return 0xff0000; // Ruby (빨강)
-    if (level >= 21) return 0x00b4fc; // Diamond (파랑)
-    if (level >= 16) return 0x00d4aa; // Platinum (청록)
-    if (level >= 11) return 0xffc700; // Gold (노랑)
-    if (level >= 6) return 0xaaaaaa; // Silver (회색)
-    if (level >= 1) return 0xff9900; // Bronze (주황)
-    return 0x808080; // Unrated (어두운 회색)
+    if (level >= 26) return 0xff0000; // Ruby
+    if (level >= 21) return 0x00b4fc; // Diamond
+    if (level >= 16) return 0x00d4aa; // Platinum
+    if (level >= 11) return 0xffc700; // Gold
+    if (level >= 6) return 0xaaaaaa; // Silver
+    if (level >= 1) return 0xff9900; // Bronze
+    return 0x808080; // Unrated
 }
 
 module.exports = {
@@ -92,10 +89,10 @@ module.exports = {
             .getString("난이도")
             .toLowerCase();
 
-        // 🚨 3초 타임아웃 방지를 위해 즉시 응답 예약 (필수)
+        // 3초 타임아웃 방지
         await interaction.deferReply();
 
-        // 난이도 매핑 확인
+        // 난이도 확인
         let level = difficultyMap[difficultyInput];
         if (!level) {
             return interaction.editReply(
@@ -104,9 +101,8 @@ module.exports = {
         }
 
         try {
-            // Solved.ac API 요청: level:L 필터와 함께 'level:1..30'을 추가하여 Unrated(0) 문제 필터링
-            // solvable:true+level:L+level:1..30
-            const apiUrl = `https://solved.ac/api/v3/search/problem?query=solvable:true+level:${level}+level:1..30&sort=random&page=1`;
+            // ✅ 수정된 Solved.ac API 요청 (정확한 난이도만 검색)
+            const apiUrl = `https://solved.ac/api/v3/search/problem?query=solvable:true+level:${level}&sort=random&page=1`;
 
             const response = await axios.get(apiUrl);
             const problemData = response.data;
@@ -117,20 +113,21 @@ module.exports = {
                 );
             }
 
-            const problem = problemData.items[0];
+            // 무작위로 한 문제 선택
+            const randomIndex = Math.floor(
+                Math.random() * problemData.items.length
+            );
+            const problem = problemData.items[randomIndex];
 
             const problemId = problem.problemId;
-            // 🚨 최종 수정: titleKo(한국어 제목)가 확실한 필드이므로 이를 우선 사용
-            const title =
-                problem.titleKo || problem.title || "제목 없음 (확인 필요)";
-
+            const title = problem.titleKo || `[문제 ${problemId}]`;
             const problemLevel = problem.level;
 
             const levelName = getDifficultyName(problemLevel);
             const color = getDifficultyColor(problemLevel);
 
-            // 태그 처리: 한국어 이름 우선 추출
-            const tags = problem.tags
+            // 태그 (한국어 우선)
+            const tags = problem.tags?.length
                 ? problem.tags
                       .map(
                           (tag) =>
@@ -143,10 +140,10 @@ module.exports = {
                       .join(" ")
                 : "없음";
 
-            // 결과 임베드 생성
+            // 임베드 생성
             const problemEmbed = new EmbedBuilder()
                 .setColor(color)
-                .setTitle(`📌 [${problemId}] ${title}`)
+                .setTitle(`📘 [${problemId}] ${title}`)
                 .setURL(`https://www.acmicpc.net/problem/${problemId}`)
                 .setDescription(`**추천 난이도:** ${levelName}`)
                 .addFields(
@@ -176,7 +173,7 @@ module.exports = {
         }
     },
 
-    // 자동 완성 기능 (변동 없음)
+    // 자동완성 기능
     async autocomplete(interaction) {
         const focusedValue = interaction.options.getFocused().toLowerCase();
 
