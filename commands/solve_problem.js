@@ -57,7 +57,7 @@ function getDifficultyName(level) {
     };
 
     // level: 1(B5) ~ 30(R1)
-    const tierValue = Math.ceil(level / 5) * 5; // 1~5 -> 5, 6~10 -> 10, ...
+    const tierValue = Math.ceil(level / 5) * 5; // 레벨 그룹 (5, 10, 15, ...)
     const tierName = tierMap[tierValue];
 
     // 각 티어 내의 레벨 (5, 4, 3, 2, 1) 계산
@@ -66,7 +66,7 @@ function getDifficultyName(level) {
     return `${tierName} ${tierLevel}`;
 }
 
-// 난이도에 따라 임베드 색상 설정 (색상 코드는 변경 없음)
+// 난이도에 따라 임베드 색상 설정
 function getDifficultyColor(level) {
     if (level >= 26) return 0xff0000; // Ruby (빨강)
     if (level >= 21) return 0x00b4fc; // Diamond (파랑)
@@ -121,14 +121,16 @@ module.exports = {
             const problem = problemData.items[0];
 
             const problemId = problem.problemId;
-            const title = problem.title;
-            const problemLevel = problem.level; // API가 반환한 실제 레벨
+            // 🚨 문제 제목 수정: title 필드에 문제가 있다면 titleKo를 사용하거나, 안전하게 빈 문자열 처리
+            const title = problem.title || "제목 없음";
+
+            const problemLevel = problem.level;
 
             // 수정된 함수로 난이도 이름/색상 가져오기
             const levelName = getDifficultyName(problemLevel);
             const color = getDifficultyColor(problemLevel);
 
-            // 태그 처리
+            // 태그 처리: 한국어 이름 우선 추출
             const tags = problem.tags
                 ? problem.tags
                       .map(
@@ -145,9 +147,9 @@ module.exports = {
             // 결과 임베드 생성
             const problemEmbed = new EmbedBuilder()
                 .setColor(color)
-                .setTitle(`📌 [${problemId}] ${title}`)
+                .setTitle(`📌 [${problemId}] ${title}`) // 수정된 title 사용
                 .setURL(`https://www.acmicpc.net/problem/${problemId}`)
-                .setDescription(`**추천 난이도:** ${levelName}`) // 정확한 난이도 이름 표시
+                .setDescription(`**추천 난이도:** ${levelName}`)
                 .addFields(
                     {
                         name: "문제 번호",
