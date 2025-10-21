@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const http = require("http");
 
-// 1. 토큰 및 헬스 체크 설정 (Koyeb 배포를 위해 유지)
+// 토큰 및 헬스 체크 설정 ((((Koyeb 배포)0
 const token = process.env.DISCORD_BOT_TOKEN;
 const PORT = process.env.PORT || 8000;
 
@@ -15,13 +15,11 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, "0.0.0.0", () => {
     console.log(`[HTTP] Health check server listening on port ${PORT}`);
 });
-// ----------------------------------------------------------------------
 
-// 2. 클라이언트 및 명령어 컬렉션 생성
+// 클라이언트 및 명령어 컬렉션 생성
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        // 기존 MessageContent 대신 GuildMembers 인텐트가 관리 기능에 필수
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
@@ -30,7 +28,7 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// 3. 명령어 파일 로드
+// 명령어 파일 로드..ㅓㅣ
 const commandsPath = path.join(__dirname, "commands");
 const commandFiles = fs
     .readdirSync(commandsPath)
@@ -48,22 +46,33 @@ for (const file of commandFiles) {
     }
 }
 
-// 4. 이벤트 핸들러
+// 이벤트 핸들러
+// 이벤트 핸들러
 client.once(Events.ClientReady, (readyClient) => {
     console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
 
-// !!! 핑퐁 (messageCreate) 기능 제거 !!!
-
-// 5. 슬래시 명령어 상호작용 처리
+// 상호작용 이벤트 처리 (수정할 부분)
 client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
+    // 채팅 명령어와 자동 완성 상호작용만 처리합니다.
+    if (!interaction.isChatInputCommand() && !interaction.isAutocomplete())
+        return;
 
     const command = interaction.client.commands.get(interaction.commandName);
 
     if (!command) return;
 
     try {
+        // 1. 자동 완성 상호작용 처리
+        if (interaction.isAutocomplete()) {
+            // 명령어 모듈에 autocomplete 함수가 정의되어 있으면 실행합니다.
+            if (command.autocomplete) {
+                await command.autocomplete(interaction);
+            }
+            return;
+        }
+
+        // 2. 채팅 명령어 실행
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
@@ -79,5 +88,5 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 });
 
-// 6. 봇 로그인
+// 봇 로긴ㄴㄴㄴㄴㄴㄴㄴ
 client.login(token);

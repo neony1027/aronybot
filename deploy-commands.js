@@ -2,11 +2,10 @@ const { REST, Routes } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 
-// 봇 클라이언트 ID를 디스코드 개발자 포털 (General Information 탭)에서 복사하여 붙여넣으세요!
 const clientId = "1429770357438418964";
 const token = process.env.DISCORD_BOT_TOKEN;
 
-if (!token) {
+if (!token) {//혹시 모르면
     console.error(
         "환경 변수 DISCORD_BOT_TOKEN 또는 clientId가 설정되지 않았습니다. deploy-commands.js를 수정하고 로컬 환경 변수를 설정하세요."
     );
