@@ -56,11 +56,9 @@ function getDifficultyName(level) {
         5: "Bronze",
     };
 
-    // level: 1(B5) ~ 30(R1)
-    const tierValue = Math.ceil(level / 5) * 5; // 레벨 그룹 (5, 10, 15, ...)
+    const tierValue = Math.ceil(level / 5) * 5;
     const tierName = tierMap[tierValue];
 
-    // 각 티어 내의 레벨 (5, 4, 3, 2, 1) 계산
     const tierLevel = 6 - (level % 5 === 0 ? 5 : level % 5);
 
     return `${tierName} ${tierLevel}`;
@@ -106,27 +104,28 @@ module.exports = {
         }
 
         try {
-            // Solved.ac API 요청: 특정 난이도의 랜덤 문제 하나를 가져옵니다.
-            const apiUrl = `https://solved.ac/api/v3/search/problem?query=solvable:true+level:${level}&sort=random&page=1`;
+            // Solved.ac API 요청: level:L 필터와 함께 'level:1..30'을 추가하여 Unrated(0) 문제 필터링
+            // solvable:true+level:L+level:1..30
+            const apiUrl = `https://solved.ac/api/v3/search/problem?query=solvable:true+level:${level}+level:1..30&sort=random&page=1`;
 
             const response = await axios.get(apiUrl);
             const problemData = response.data;
 
             if (problemData.count === 0 || problemData.items.length === 0) {
                 return interaction.editReply(
-                    `🤔 해당 난이도(${difficultyInput.toUpperCase()})의 문제를 찾을 수 없습니다.`
+                    `🤔 해당 난이도(${difficultyInput.toUpperCase()})의 등급이 매겨진 문제를 찾을 수 없습니다.`
                 );
             }
 
             const problem = problemData.items[0];
 
             const problemId = problem.problemId;
-            // 🚨 문제 제목 수정: title 필드에 문제가 있다면 titleKo를 사용하거나, 안전하게 빈 문자열 처리
-            const title = problem.title || "제목 없음";
+            // 🚨 최종 수정: titleKo(한국어 제목)가 확실한 필드이므로 이를 우선 사용
+            const title =
+                problem.titleKo || problem.title || "제목 없음 (확인 필요)";
 
             const problemLevel = problem.level;
 
-            // 수정된 함수로 난이도 이름/색상 가져오기
             const levelName = getDifficultyName(problemLevel);
             const color = getDifficultyColor(problemLevel);
 
@@ -147,7 +146,7 @@ module.exports = {
             // 결과 임베드 생성
             const problemEmbed = new EmbedBuilder()
                 .setColor(color)
-                .setTitle(`📌 [${problemId}] ${title}`) // 수정된 title 사용
+                .setTitle(`📌 [${problemId}] ${title}`)
                 .setURL(`https://www.acmicpc.net/problem/${problemId}`)
                 .setDescription(`**추천 난이도:** ${levelName}`)
                 .addFields(
@@ -171,14 +170,13 @@ module.exports = {
             await interaction.editReply({ embeds: [problemEmbed] });
         } catch (error) {
             console.error("Solved.ac API 요청 중 오류 발생:", error.message);
-            // API 오류 시 사용자에게 알림
             await interaction.editReply(
                 `💥 Solved.ac API 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.`
             );
         }
     },
 
-    // 난이도 옵션 자동 완성 기능 (변동 없음)
+    // 자동 완성 기능 (변동 없음)
     async autocomplete(interaction) {
         const focusedValue = interaction.options.getFocused().toLowerCase();
 
