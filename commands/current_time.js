@@ -61,6 +61,9 @@ module.exports = {
         .setDescription("전 세계 랜덤 국가의 현재 시각을 알려줍니다."),
 
     async execute(interaction) {
+        // 🚨 3초 타임아웃 방지를 위해 즉시 응답을 예약합니다. (매우 중요!)
+        await interaction.deferReply();
+
         const randomTimezone = getRandomTimezone(timezones);
 
         // 시간대에 맞는 현재 시각 생성 및 포맷
@@ -93,7 +96,7 @@ module.exports = {
             .setFooter({ text: "세상은 항상 움직이고 있어요!" })
             .setTimestamp();
 
-        // 사용자에게 결과 전송
-        await interaction.reply({ embeds: [timeEmbed] });
+        // deferReply로 예약된 응답을 editReply로 최종 메시지를 전송합니다.
+        await interaction.editReply({ embeds: [timeEmbed] });
     },
 };

@@ -1,7 +1,7 @@
 // commands/solve_problem.js
 
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const axios = require("axios"); // axios 추가
+const axios = require("axios");
 
 // 난이도 이름 <-> 숫자 매핑
 const difficultyMap = {
@@ -70,19 +70,14 @@ module.exports = {
                 .setDescription("예: s3, g1, p5 (브론즈5 ~ 루비1)")
                 .setRequired(true)
                 .setAutocomplete(true)
-        ), // 자동 완성 기능을 사용할 수 있도록 설정
-
-    // 자동 완성 기능 (나중에 구현할 예정이지만 일단 넣어둡니다)
-    // async autocomplete(interaction) {
-    //     // ... (자동 완성 로직은 일단 생략)
-    // },
+        ),
 
     async execute(interaction) {
         let difficultyInput = interaction.options
             .getString("난이도")
             .toLowerCase();
 
-        // 🚨 3초 타임아웃 방지를 위해 즉시 응답 예약
+        // 🚨 3초 타임아웃 방지를 위해 즉시 응답 예약 (필수)
         await interaction.deferReply();
 
         // 난이도 매핑 확인
@@ -94,8 +89,7 @@ module.exports = {
         }
 
         try {
-            // Solved.ac API 요청: 특정 난이도의 랜덤 문제 하나를 가져옵니다.
-            // URL: /api/v3/search/problem?query=solvable:true+level:L&sort=random&page=1
+            // Solved.ac API 요청
             const apiUrl = `https://solved.ac/api/v3/search/problem?query=solvable:true+level:${level}&sort=random&page=1`;
 
             const response = await axios.get(apiUrl);
@@ -107,7 +101,7 @@ module.exports = {
                 );
             }
 
-            const problem = problemData.items[0]; // 랜덤 정렬했으므로 첫 번째 항목이 랜덤 문제입니다.
+            const problem = problemData.items[0];
 
             const problemId = problem.problemId;
             const title = problem.title;
@@ -150,10 +144,11 @@ module.exports = {
             );
         }
     },
+
+    // 난이도 옵션 자동 완성 기능
     async autocomplete(interaction) {
         const focusedValue = interaction.options.getFocused().toLowerCase();
 
-        // 자동 완성 추천 목록 (난이도, 레벨 이름 등을 포함)
         const choices = [
             "b5",
             "b4",
