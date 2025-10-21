@@ -1,49 +1,40 @@
-// commands/solve_problem.js
-
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const axios = require("axios");
 
-// 티어-레벨 매핑
-const difficultyMap = {
-    // Bronze
-    b5: 1,
-    b4: 2,
-    b3: 3,
-    b2: 4,
-    b1: 5,
-    // Silver
-    s5: 6,
-    s4: 7,
-    s3: 8,
-    s2: 9,
-    s1: 10,
-    // Gold
-    g5: 11,
-    g4: 12,
-    g3: 13,
-    g2: 14,
-    g1: 15,
-    // Platinum
-    p5: 16,
-    p4: 17,
-    p3: 18,
-    p2: 19,
-    p1: 20,
-    // Diamond
-    d5: 21,
-    d4: 22,
-    d3: 23,
-    d2: 24,
-    d1: 25,
-    // Ruby
-    r5: 26,
-    r4: 27,
-    r3: 28,
-    r2: 29,
-    r1: 30,
+const difficultyLevels = {
+    b5: "level:1",
+    b4: "level:2",
+    b3: "level:3",
+    b2: "level:4",
+    b1: "level:5",
+    s5: "level:6",
+    s4: "level:7",
+    s3: "level:8",
+    s2: "level:9",
+    s1: "level:10",
+    g5: "level:11",
+    g4: "level:12",
+    g3: "level:13",
+    g2: "level:14",
+    g1: "level:15",
+    p5: "level:16",
+    p4: "level:17",
+    p3: "level:18",
+    p2: "level:19",
+    p1: "level:20",
+    d5: "level:21",
+    d4: "level:22",
+    d3: "level:23",
+    d2: "level:24",
+    d1: "level:25",
+    r5: "level:26",
+    r4: "level:27",
+    r3: "level:28",
+    r2: "level:29",
+    r1: "level:30",
 };
 
-// 난이도 이름 변환
+// 이름 변환
 function getDifficultyName(level) {
     if (level === 0) return "Unrated";
     const tierMap = {
@@ -60,7 +51,7 @@ function getDifficultyName(level) {
     return `${tierName} ${tierLevel}`;
 }
 
-// 난이도 색상
+// 색상
 function getDifficultyColor(level) {
     if (level >= 26) return 0xff0000; // Ruby
     if (level >= 21) return 0x00b4fc; // Diamond
@@ -68,7 +59,7 @@ function getDifficultyColor(level) {
     if (level >= 11) return 0xffc700; // Gold
     if (level >= 6) return 0xaaaaaa; // Silver
     if (level >= 1) return 0xff9900; // Bronze
-    return 0x808080; // Unrated
+    return 0x808080;
 }
 
 module.exports = {
@@ -87,48 +78,43 @@ module.exports = {
         const difficultyInput = interaction.options
             .getString("난이도")
             .toLowerCase();
+        const query = difficultyLevels[difficultyInput];
 
         await interaction.deferReply();
 
-        const level = difficultyMap[difficultyInput];
-        if (!level) {
+        if (!query) {
             return interaction.editReply(
                 "❌ 올바른 난이도(예: s3, g1, p5)를 입력해주세요."
             );
         }
 
         try {
-            // Solved.ac API 요청 (정확한 level 필터 적용)
-            const apiUrl = `https://solved.ac/api/v3/search/problem?query=solvable:true+level:${level}&page=1`;
+            // 확실히 level 고정된 검색 (sort=random 유지 가능)
+            const apiUrl = `https://solved.ac/api/v3/search/problem?query=solvable:true+${query}&sort=random&page=1`;
             const response = await axios.get(apiUrl);
-            const problemData = response.data;
+            const problems = response.data.items;
 
-            if (!problemData.items || problemData.items.length === 0) {
+            if (!problems || problems.length === 0) {
                 return interaction.editReply(
-                    `🤔 해당 난이도(${difficultyInput.toUpperCase()}) 문제를 찾을 수 없습니다.`
+                    `해당 난이도(${difficultyInput.toUpperCase()}) 문제를 찾을 수 없습니다.`
                 );
             }
 
-            // 완전 랜덤 추출 (API에서 받아온 목록 내에서만)
-            const randomIndex = Math.floor(
-                Math.random() * problemData.items.length
-            );
-            const problem = problemData.items[randomIndex];
-
+            const problem =
+                problems[Math.floor(Math.random() * problems.length)];
             const problemId = problem.problemId;
             const title = problem.titleKo || `[문제 ${problemId}]`;
-            const problemLevel = problem.level;
-            const levelName = getDifficultyName(problemLevel);
-            const color = getDifficultyColor(problemLevel);
+            const levelName = getDifficultyName(problem.level);
+            const color = getDifficultyColor(problem.level);
 
             const tags = problem.tags
                 ? problem.tags
                       .map(
-                          (tag) =>
+                          (t) =>
                               `#${
-                                  tag.displayNames.find(
+                                  t.displayNames.find(
                                       (d) => d.language === "ko"
-                                  )?.name || tag.displayNames[0].name
+                                  )?.name || t.displayNames[0].name
                               }`
                       )
                       .join(" ")
@@ -159,12 +145,11 @@ module.exports = {
         } catch (err) {
             console.error("Solved.ac API 오류:", err.message);
             await interaction.editReply(
-                "💥 Solved.ac API 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+                "💥 Solved.ac API 요청 중 오류가 발생했습니다."
             );
         }
     },
 
-    // 자동완성
     async autocomplete(interaction) {
         const focused = interaction.options.getFocused().toLowerCase();
         const choices = [
@@ -199,11 +184,9 @@ module.exports = {
             "r2",
             "r1",
         ];
-
         const filtered = choices
             .filter((c) => c.startsWith(focused))
             .slice(0, 25);
-
         await interaction.respond(
             filtered.map((c) => ({ name: c.toUpperCase(), value: c }))
         );
