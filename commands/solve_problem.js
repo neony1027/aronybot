@@ -1,7 +1,9 @@
+// commands/solve_problem.js
+
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const axios = require("axios");
 
-// 티어-레벨 매핑 (Solved.ac 레벨: 1(B5) ~ 30(R1))
+// 티어-레벨 매핑
 const difficultyMap = {
     // Bronze
     b5: 1,
@@ -41,10 +43,9 @@ const difficultyMap = {
     r1: 30,
 };
 
-// 난이도 숫자를 티어명으로 변환
+// 난이도 이름 변환
 function getDifficultyName(level) {
     if (level === 0) return "Unrated";
-
     const tierMap = {
         30: "Ruby",
         25: "Diamond",
@@ -53,15 +54,13 @@ function getDifficultyName(level) {
         10: "Silver",
         5: "Bronze",
     };
-
     const tierValue = Math.ceil(level / 5) * 5;
     const tierName = tierMap[tierValue];
     const tierLevel = 6 - (level % 5 === 0 ? 5 : level % 5);
-
     return `${tierName} ${tierLevel}`;
 }
 
-// 난이도 색상 반환
+// 난이도 색상
 function getDifficultyColor(level) {
     if (level >= 26) return 0xff0000; // Ruby
     if (level >= 21) return 0x00b4fc; // Diamond
@@ -85,35 +84,32 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        let difficultyInput = interaction.options
+        const difficultyInput = interaction.options
             .getString("난이도")
             .toLowerCase();
 
-        // 3초 타임아웃 방지
         await interaction.deferReply();
 
-        // 난이도 확인
-        let level = difficultyMap[difficultyInput];
+        const level = difficultyMap[difficultyInput];
         if (!level) {
             return interaction.editReply(
-                `❌ 올바른 난이도(예: s3, g1, p5)를 입력해주세요.`
+                "❌ 올바른 난이도(예: s3, g1, p5)를 입력해주세요."
             );
         }
 
         try {
-            // ✅ 수정된 Solved.ac API 요청 (정확한 난이도만 검색)
-            const apiUrl = `https://solved.ac/api/v3/search/problem?query=solvable:true+level:${level}&sort=random&page=1`;
-
+            // Solved.ac API 요청 (정확한 level 필터 적용)
+            const apiUrl = `https://solved.ac/api/v3/search/problem?query=solvable:true+level:${level}&page=1`;
             const response = await axios.get(apiUrl);
             const problemData = response.data;
 
-            if (problemData.count === 0 || problemData.items.length === 0) {
+            if (!problemData.items || problemData.items.length === 0) {
                 return interaction.editReply(
-                    `🤔 해당 난이도(${difficultyInput.toUpperCase()})의 등급이 매겨진 문제를 찾을 수 없습니다.`
+                    `🤔 해당 난이도(${difficultyInput.toUpperCase()}) 문제를 찾을 수 없습니다.`
                 );
             }
 
-            // 무작위로 한 문제 선택
+            // 완전 랜덤 추출 (API에서 받아온 목록 내에서만)
             const randomIndex = Math.floor(
                 Math.random() * problemData.items.length
             );
@@ -122,12 +118,10 @@ module.exports = {
             const problemId = problem.problemId;
             const title = problem.titleKo || `[문제 ${problemId}]`;
             const problemLevel = problem.level;
-
             const levelName = getDifficultyName(problemLevel);
             const color = getDifficultyColor(problemLevel);
 
-            // 태그 (한국어 우선)
-            const tags = problem.tags?.length
+            const tags = problem.tags
                 ? problem.tags
                       .map(
                           (tag) =>
@@ -140,8 +134,7 @@ module.exports = {
                       .join(" ")
                 : "없음";
 
-            // 임베드 생성
-            const problemEmbed = new EmbedBuilder()
+            const embed = new EmbedBuilder()
                 .setColor(color)
                 .setTitle(`📘 [${problemId}] ${title}`)
                 .setURL(`https://www.acmicpc.net/problem/${problemId}`)
@@ -154,29 +147,26 @@ module.exports = {
                     },
                     {
                         name: "평균 시도 횟수",
-                        value: problem.averageTries
-                            ? problem.averageTries.toFixed(2)
-                            : "N/A",
+                        value: problem.averageTries?.toFixed(2) || "N/A",
                         inline: true,
                     },
-                    { name: "태그", value: tags, inline: false }
+                    { name: "태그", value: tags }
                 )
                 .setFooter({ text: "Powered by solved.ac API" })
                 .setTimestamp();
 
-            await interaction.editReply({ embeds: [problemEmbed] });
-        } catch (error) {
-            console.error("Solved.ac API 요청 중 오류 발생:", error.message);
+            await interaction.editReply({ embeds: [embed] });
+        } catch (err) {
+            console.error("Solved.ac API 오류:", err.message);
             await interaction.editReply(
-                `💥 Solved.ac API 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.`
+                "💥 Solved.ac API 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
             );
         }
     },
 
-    // 자동완성 기능
+    // 자동완성
     async autocomplete(interaction) {
-        const focusedValue = interaction.options.getFocused().toLowerCase();
-
+        const focused = interaction.options.getFocused().toLowerCase();
         const choices = [
             "b5",
             "b4",
@@ -211,14 +201,11 @@ module.exports = {
         ];
 
         const filtered = choices
-            .filter((choice) => choice.startsWith(focusedValue))
+            .filter((c) => c.startsWith(focused))
             .slice(0, 25);
 
         await interaction.respond(
-            filtered.map((choice) => ({
-                name: choice.toUpperCase(),
-                value: choice,
-            }))
+            filtered.map((c) => ({ name: c.toUpperCase(), value: c }))
         );
     },
 };
